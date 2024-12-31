@@ -6,6 +6,7 @@ pub mod user;
 pub mod err;
 pub mod session;
 pub mod items;
+pub mod user_library;
 
 #[derive(Debug, Clone)]
 pub struct JellyfinClient {
