@@ -6,7 +6,8 @@ use serde::Serialize;
 use base64::{engine::general_purpose::URL_SAFE, Engine};
 
 use crate::{
-    sha::Sha256, user::UserAuth, Auth, ClientInfo, JellyfinClient, KeyAuth, NoAuth, Result,
+    err::JellyfinError, sha::Sha256, user::UserAuth, Auth, ClientInfo, JellyfinClient, KeyAuth,
+    NoAuth,
 };
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize)]
@@ -36,8 +37,8 @@ impl<Sha: Sha256> JellyfinClient<NoAuth, Sha> {
         self,
         username: impl AsRef<str>,
         password: impl AsRef<str>,
-    ) -> Result<JellyfinClient<Auth, Sha>> {
-        let req = self
+    ) -> Result<JellyfinClient<Auth, Sha>, (Self, JellyfinError)> {
+        let req = match self
             .client
             .post(format!("{}Users/AuthenticateByName", self.url))
             .json(&AuthUserNameReq {
@@ -45,9 +46,16 @@ impl<Sha: Sha256> JellyfinClient<NoAuth, Sha> {
                 pw: password.as_ref(),
             })
             .send()
-            .await?;
+            .await
+        {
+            Ok(req) => req,
+            Err(e) => return Err((self, e.into())),
+        };
 
-        let auth: UserAuth = req.json().await?;
+        let auth: UserAuth = match req.json().await {
+            Ok(auth) => auth,
+            Err(e) => return Err((self, e.into())),
+        };
         let auth_header = make_user_auth_header::<Sha>(&auth, &self.client_info, &self.device_name);
         Ok(JellyfinClient {
             url: self.url,

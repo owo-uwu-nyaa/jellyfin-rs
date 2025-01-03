@@ -22,12 +22,12 @@ pub mod user_library;
 pub mod user_views;
 
 #[derive(Debug, Clone)]
-pub struct JellyfinClient<Auth: AuthStatus, Sha: Sha256 = sha::Default> {
+pub struct JellyfinClient<AuthS: AuthStatus = Auth, Sha: Sha256 = sha::Default> {
     url: Url,
     client: Client,
     client_info: ClientInfo,
     device_name: Cow<'static, str>,
-    auth: Auth,
+    auth: AuthS,
     _phantom: PhantomData<Sha>,
 }
 
@@ -114,7 +114,7 @@ impl<AuthS: AuthStatus, Sha: Sha256> JellyfinClient<AuthS, Sha> {
     ) -> err::Result<JellyfinClient<Auth, Sha>> {
         Self::new(url, client_info, device_name)?
             .auth_user_name(username, password)
-            .await
+            .await.map_err(|(_,e)|e)
     }
 
     pub fn new_auth_key(
@@ -140,6 +140,12 @@ impl<AuthS: AuthStatus, Sha: Sha256> JellyfinClient<AuthS, Sha> {
     }
     pub fn get_device_name(&self) -> &str {
         &self.device_name
+    }
+}
+
+impl<Sha: Sha256> JellyfinClient<NoAuth, Sha>{
+    pub fn get_base_url_mut(&mut self)-> &mut Url{
+        &mut self.url
     }
 }
 
