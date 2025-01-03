@@ -1,12 +1,19 @@
 use super::err::Result;
-use serde_derive::Deserialize;
-use serde_derive::Serialize;
-use serde_json::json;
-use sha1::Digest;
+use serde::de::Visitor;
+use serde::Deserialize;
+use serde::Serialize;
 
 use super::session::SessionInfo;
-use crate::err::JellyfinError;
+use crate::sealed::AuthStatus;
+use crate::sha::Sha256;
+use crate::Authed;
 use crate::JellyfinClient;
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct UserIdQuery<'id> {
+    user_id: &'id str,
+}
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -30,64 +37,64 @@ pub struct User {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct MediaStream {
-  //         "Codec": "string",
-  //         "CodecTag": "string",
-  //         "Language": "string",
-  //         "ColorRange": "string",
-  //         "ColorSpace": "string",
-  //         "ColorTransfer": "string",
-  //         "ColorPrimaries": "string",
-  //         "DvVersionMajor": 0,
-  //         "DvVersionMinor": 0,
-  //         "DvProfile": 0,
-  //         "DvLevel": 0,
-  //         "RpuPresentFlag": 0,
-  //         "ElPresentFlag": 0,
-  //         "BlPresentFlag": 0,
-  //         "DvBlSignalCompatibilityId": 0,
-  //         "Comment": "string",
-  //         "TimeBase": "string",
-  //         "CodecTimeBase": "string",
-  //         "Title": "string",
-  //         "VideoRange": "string",
-  //         "VideoRangeType": "string",
-  //         "VideoDoViTitle": "string",
-  //         "LocalizedUndefined": "string",
-  //         "LocalizedDefault": "string",
-  //         "LocalizedForced": "string",
-  //         "LocalizedExternal": "string",
-  //         "DisplayTitle": "string",
-  //         "NalLengthSize": "string",
-  //         "IsInterlaced": true,
-  //         "IsAVC": true,
-  //         "ChannelLayout": "string",
-  //         "BitRate": 0,
-  //         "BitDepth": 0,
-  //         "RefFrames": 0,
-  //         "PacketLength": 0,
-  //         "Channels": 0,
-  //         "SampleRate": 0,
-  //         "IsDefault": true,
-  //         "IsForced": true,
-  //         "Height": 0,
-  //         "Width": 0,
-  //         "AverageFrameRate": 0,
-  //         "RealFrameRate": 0,
-  //         "Profile": "string",
-  //         "Type": "Audio",
-  //         "AspectRatio": "string",
-  //         "Index": 0,
-  //         "Score": 0,
-  //         "IsExternal": true,
-  //         "DeliveryMethod": "Encode",
-  //         "DeliveryUrl": "string",
-  //         "IsExternalUrl": true,
-  //         "IsTextSubtitleStream": true,
-  //         "SupportsExternalStream": true,
-  //         "Path": "string",
-  //         "PixelFormat": "string",
-  //         "Level": 0,
-  //         "IsAnamorphic": true
+    //         "Codec": "string",
+    //         "CodecTag": "string",
+    //         "Language": "string",
+    //         "ColorRange": "string",
+    //         "ColorSpace": "string",
+    //         "ColorTransfer": "string",
+    //         "ColorPrimaries": "string",
+    //         "DvVersionMajor": 0,
+    //         "DvVersionMinor": 0,
+    //         "DvProfile": 0,
+    //         "DvLevel": 0,
+    //         "RpuPresentFlag": 0,
+    //         "ElPresentFlag": 0,
+    //         "BlPresentFlag": 0,
+    //         "DvBlSignalCompatibilityId": 0,
+    //         "Comment": "string",
+    //         "TimeBase": "string",
+    //         "CodecTimeBase": "string",
+    //         "Title": "string",
+    //         "VideoRange": "string",
+    //         "VideoRangeType": "string",
+    //         "VideoDoViTitle": "string",
+    //         "LocalizedUndefined": "string",
+    //         "LocalizedDefault": "string",
+    //         "LocalizedForced": "string",
+    //         "LocalizedExternal": "string",
+    //         "DisplayTitle": "string",
+    //         "NalLengthSize": "string",
+    //         "IsInterlaced": true,
+    //         "IsAVC": true,
+    //         "ChannelLayout": "string",
+    //         "BitRate": 0,
+    //         "BitDepth": 0,
+    //         "RefFrames": 0,
+    //         "PacketLength": 0,
+    //         "Channels": 0,
+    //         "SampleRate": 0,
+    //         "IsDefault": true,
+    //         "IsForced": true,
+    //         "Height": 0,
+    //         "Width": 0,
+    //         "AverageFrameRate": 0,
+    //         "RealFrameRate": 0,
+    //         "Profile": "string",
+    //         "Type": "Audio",
+    //         "AspectRatio": "string",
+    //         "Index": 0,
+    //         "Score": 0,
+    //         "IsExternal": true,
+    //         "DeliveryMethod": "Encode",
+    //         "DeliveryUrl": "string",
+    //         "IsExternalUrl": true,
+    //         "IsTextSubtitleStream": true,
+    //         "SupportsExternalStream": true,
+    //         "Path": "string",
+    //         "PixelFormat": "string",
+    //         "Level": 0,
+    //         "IsAnamorphic": true
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -125,17 +132,17 @@ pub struct MediaSource {
     pub video_3d_format: Option<String>,
     pub media_streams: Vec<MediaStream>,
     // media_attachments: Vec<MediaAttachment>,
-  //     "MediaAttachments": [
-  //       {
-  //         "Codec": "string",
-  //         "CodecTag": "string",
-  //         "Comment": "string",
-  //         "Index": 0,
-  //         "FileName": "string",
-  //         "MimeType": "string",
-  //         "DeliveryUrl": "string"
-  //       }
-  //     ],
+    //     "MediaAttachments": [
+    //       {
+    //         "Codec": "string",
+    //         "CodecTag": "string",
+    //         "Comment": "string",
+    //         "Index": 0,
+    //         "FileName": "string",
+    //         "MimeType": "string",
+    //         "DeliveryUrl": "string"
+    //       }
+    //     ],
     pub formats: Vec<String>,
     pub bitrate: i64,
     pub timestamp: Option<String>,
@@ -146,13 +153,13 @@ pub struct MediaSource {
     pub analyze_duration_ms: Option<i64>,
     pub default_audio_stream_index: i64,
     pub default_subtitle_stream_index: i64,
-  //     "Formats": [
-  //       "string"
-  //     ],
-  //     "RequiredHttpHeaders": {
-  //       "property1": "string",
-  //       "property2": "string"
-  //     },
+    //     "Formats": [
+    //       "string"
+    //     ],
+    //     "RequiredHttpHeaders": {
+    //       "property1": "string",
+    //       "property2": "string"
+    //     },
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -183,362 +190,361 @@ pub struct UserItem {
     pub video_3d_format: Option<String>,
     pub premiere_date: Option<String>,
     pub media_sources: Vec<MediaSource>,
-  // "ExternalUrls": [
-  //   {
-  //     "Name": "string",
-  //     "Url": "string"
-  //   }
-  // ],
+    // "ExternalUrls": [
+    //   {
+    //     "Name": "string",
+    //     "Url": "string"
+    //   }
+    // ],
     pub critic_rating: Option<i64>,
-  // "ProductionLocations": [
-  //   "string"
-  // ],
-
+    // "ProductionLocations": [
+    //   "string"
+    // ],
     pub path: String,
-  // enable_media_source_display: bool,
-  // official_rating: String,
-  // custom_rating: String,
-  // channel_id: String,
-  // channel_name: String,
-  // overview: String,
-  // taglines: Vec<String>,
-  // genres: Vec<String>,
-  // community_rating: i64,
-  // cumulative_run_time_ticks: i64,
-  // run_time_ticks: i64,
-  // play_access: String,
-  // aspect_ratio: String,
-  // production_year: i64,
-  // is_place_holder: bool,
-  // number: String,
-  // channel_number: String,
-  // index_number: i64,
-  // index_number_end: i64,
-  // parent_index_number: i64,
-  // "RemoteTrailers": [
-  //   {
-  //     "Url": "string",
-  //     "Name": "string"
-  //   }
-  // ],
-  // "ProviderIds": {
-  //   "property1": "string",
-  //   "property2": "string"
-  // },
-  pub is_hd: Option<bool>,
-  pub is_folder: bool,
-  pub parent_id: String,
-  pub r#type: String,
-  // "People": [
-  //   {
-  //     "Name": "string",
-  //     "Id": "38a5a5bb-dc30-49a2-b175-1de0d1488c43",
-  //     "Role": "string",
-  //     "Type": "string",
-  //     "PrimaryImageTag": "string",
-  //     "ImageBlurHashes": {
-  //       "Primary": {
-  //         "property1": "string",
-  //         "property2": "string"
-  //       },
-  //       "Art": {
-  //         "property1": "string",
-  //         "property2": "string"
-  //       },
-  //       "Backdrop": {
-  //         "property1": "string",
-  //         "property2": "string"
-  //       },
-  //       "Banner": {
-  //         "property1": "string",
-  //         "property2": "string"
-  //       },
-  //       "Logo": {
-  //         "property1": "string",
-  //         "property2": "string"
-  //       },
-  //       "Thumb": {
-  //         "property1": "string",
-  //         "property2": "string"
-  //       },
-  //       "Disc": {
-  //         "property1": "string",
-  //         "property2": "string"
-  //       },
-  //       "Box": {
-  //         "property1": "string",
-  //         "property2": "string"
-  //       },
-  //       "Screenshot": {
-  //         "property1": "string",
-  //         "property2": "string"
-  //       },
-  //       "Menu": {
-  //         "property1": "string",
-  //         "property2": "string"
-  //       },
-  //       "Chapter": {
-  //         "property1": "string",
-  //         "property2": "string"
-  //       },
-  //       "BoxRear": {
-  //         "property1": "string",
-  //         "property2": "string"
-  //       },
-  //       "Profile": {
-  //         "property1": "string",
-  //         "property2": "string"
-  //       }
-  //     }
-  //   }
-  // ],
-  // "Studios": [
-  //   {
-  //     "Name": "string",
-  //     "Id": "38a5a5bb-dc30-49a2-b175-1de0d1488c43"
-  //   }
-  // ],
-  // "GenreItems": [
-  //   {
-  //     "Name": "string",
-  //     "Id": "38a5a5bb-dc30-49a2-b175-1de0d1488c43"
-  //   }
-  // ],
-  // parent_logo_item_id: String,
-  // parent_backdrop_item_id: String,
-  // parent_backdrop_image_tags: Vec<String>,
-  // local_trailer_count: i64,
-  // "UserData": {
-  //   "Rating": 0,
-  //   "PlayedPercentage": 0,
-  //   "UnplayedItemCount": 0,
-  //   "PlaybackPositionTicks": 0,
-  //   "PlayCount": 0,
-  //   "IsFavorite": true,
-  //   "Likes": true,
-  //   "LastPlayedDate": "2019-08-24T14:15:22Z",
-  //   "Played": true,
-  //   "Key": "string",
-  //   "ItemId": "string"
-  // },
-  // recursive_item_count: i64,
-  // child_count: i64,
-  // series_name: String,
-  // series_id: String,
-  // season_id: String,
-  // special_feature_count: i64,
-  // display_preferences_id: String,
-  // status: String,
-  // airtime: String,
-  // air_days: Vec<String>,
-  // tags: Vec<String>,
-  // primary_image_aspect_ratio: String,
-  // artists: Vec<String>,
-  // artist_items: Vec<String>,
-  // album: String,
-  // collection_type: String,
-  // display_order: String,
-  // album_id: String,
-  // album_primary_image_tag: String,
-  // series_primary_image_tag: String,
-  // album_artist: String,
-  // "AlbumArtists": [
-  //   {
-  //     "Name": "string",
-  //     "Id": "38a5a5bb-dc30-49a2-b175-1de0d1488c43"
-  //   }
-  // ],
-  // season_name: String,
-  // "MediaStreams": [
-  //   {
-  //     "Codec": "string",
-  //     "CodecTag": "string",
-  //     "Language": "string",
-  //     "ColorRange": "string",
-  //     "ColorSpace": "string",
-  //     "ColorTransfer": "string",
-  //     "ColorPrimaries": "string",
-  //     "DvVersionMajor": 0,
-  //     "DvVersionMinor": 0,
-  //     "DvProfile": 0,
-  //     "DvLevel": 0,
-  //     "RpuPresentFlag": 0,
-  //     "ElPresentFlag": 0,
-  //     "BlPresentFlag": 0,
-  //     "DvBlSignalCompatibilityId": 0,
-  //     "Comment": "string",
-  //     "TimeBase": "string",
-  //     "CodecTimeBase": "string",
-  //     "Title": "string",
-  //     "VideoRange": "string",
-  //     "VideoRangeType": "string",
-  //     "VideoDoViTitle": "string",
-  //     "LocalizedUndefined": "string",
-  //     "LocalizedDefault": "string",
-  //     "LocalizedForced": "string",
-  //     "LocalizedExternal": "string",
-  //     "DisplayTitle": "string",
-  //     "NalLengthSize": "string",
-  //     "IsInterlaced": true,
-  //     "IsAVC": true,
-  //     "ChannelLayout": "string",
-  //     "BitRate": 0,
-  //     "BitDepth": 0,
-  //     "RefFrames": 0,
-  //     "PacketLength": 0,
-  //     "Channels": 0,
-  //     "SampleRate": 0,
-  //     "IsDefault": true,
-  //     "IsForced": true,
-  //     "Height": 0,
-  //     "Width": 0,
-  //     "AverageFrameRate": 0,
-  //     "RealFrameRate": 0,
-  //     "Profile": "string",
-  //     "Type": "Audio",
-  //     "AspectRatio": "string",
-  //     "Index": 0,
-  //     "Score": 0,
-  //     "IsExternal": true,
-  //     "DeliveryMethod": "Encode",
-  //     "DeliveryUrl": "string",
-  //     "IsExternalUrl": true,
-  //     "IsTextSubtitleStream": true,
-  //     "SupportsExternalStream": true,
-  //     "Path": "string",
-  //     "PixelFormat": "string",
-  //     "Level": 0,
-  //     "IsAnamorphic": true
-  //   }
-  // ],
-  // video_type: String,
-  // part_count: i64,
-  // media_source_count: i64,
-  // "ImageTags": {
-  //   "property1": "string",
-  //   "property2": "string"
-  // },
-  // backdrop_image_tags: Vec<String>,
-  // screenshot_image_tags: Vec<String>,
-  // parent_logo_image_tag: String,
-  // parent_art_item_id: String,
-  // parent_art_image_tag: String,
-  // series_thumb_image_tag: String,
-  // "ImageBlurHashes": {
-  //   "Primary": {
-  //     "property1": "string",
-  //     "property2": "string"
-  //   },
-  //   "Art": {
-  //     "property1": "string",
-  //     "property2": "string"
-  //   },
-  //   "Backdrop": {
-  //     "property1": "string",
-  //     "property2": "string"
-  //   },
-  //   "Banner": {
-  //     "property1": "string",
-  //     "property2": "string"
-  //   },
-  //   "Logo": {
-  //     "property1": "string",
-  //     "property2": "string"
-  //   },
-  //   "Thumb": {
-  //     "property1": "string",
-  //     "property2": "string"
-  //   },
-  //   "Disc": {
-  //     "property1": "string",
-  //     "property2": "string"
-  //   },
-  //   "Box": {
-  //     "property1": "string",
-  //     "property2": "string"
-  //   },
-  //   "Screenshot": {
-  //     "property1": "string",
-  //     "property2": "string"
-  //   },
-  //   "Menu": {
-  //     "property1": "string",
-  //     "property2": "string"
-  //   },
-  //   "Chapter": {
-  //     "property1": "string",
-  //     "property2": "string"
-  //   },
-  //   "BoxRear": {
-  //     "property1": "string",
-  //     "property2": "string"
-  //   },
-  //   "Profile": {
-  //     "property1": "string",
-  //     "property2": "string"
-  //   }
-  // },
-  // series_studio: String,
-  // parent_thumb_item_id: String,
-  // parent_thumb_image_tag: String,
-  // parent_primary_image_item_id: String,
-  // parent_primary_image_tag: String,
-  // "Chapters": [
-  //   {
-  //     "StartPositionTicks": 0,
-  //     "Name": "string",
-  //     "ImagePath": "string",
-  //     "ImageDateModified": "2019-08-24T14:15:22Z",
-  //     "ImageTag": "string"
-  //   }
-  // ],
-  // location_type: String,
-  // iso_type: String,
-  // media_type: String,
-  // end_date: String,
-  // locked_fields: Vec<String>,
-  // trailer_count: i64,
-  // movie_count: i64,
-  // series_count: i64,
-  // program_count: i64,
-  // episode_count: i64,
-  // song_count: i64,
-  // album_count: i64,
-  // artist_count: i64,
-  // music_video_count: i64,
-  // lock_data: bool,
-  // width: i64,
-  // height: i64,
-  // camera_make: String,
-  // camera_model: String,
-  // software: String,
-  // exposure_time: i64,
-  // focal_length: i64,
-  // image_orientation: String,
-  // aperture: i64,
-  // shutter_speed: i64,
-  // latitude: i64,
-  // longitude: i64,
-  // altitude: i64,
-  // iso_speed_rating: i64,
-  // series_timer_id: String,
-  // program_id: String,
-  // channel_primary_image_tag: String,
-  // start_date: String,
-  // completion_percentage: i64,
-  // is_repeat: bool,
-  // episode_title: String,
-  // channel_type: String,
-  // audio: String,
-  // is_movie: bool,
-  // is_sports: bool,
-  // is_series: bool,
-  // is_live: bool,
-  // is_news: bool,
-  // is_kids: bool,
-  // is_premiere: bool,
-  // timer_id: String,
-  // "CurrentProgram": {}
+    // enable_media_source_display: bool,
+    // official_rating: String,
+    // custom_rating: String,
+    // channel_id: String,
+    // channel_name: String,
+    // overview: String,
+    // taglines: Vec<String>,
+    // genres: Vec<String>,
+    // community_rating: i64,
+    // cumulative_run_time_ticks: i64,
+    // run_time_ticks: i64,
+    // play_access: String,
+    // aspect_ratio: String,
+    // production_year: i64,
+    // is_place_holder: bool,
+    // number: String,
+    // channel_number: String,
+    // index_number: i64,
+    // index_number_end: i64,
+    // parent_index_number: i64,
+    // "RemoteTrailers": [
+    //   {
+    //     "Url": "string",
+    //     "Name": "string"
+    //   }
+    // ],
+    // "ProviderIds": {
+    //   "property1": "string",
+    //   "property2": "string"
+    // },
+    pub is_hd: Option<bool>,
+    pub is_folder: bool,
+    pub parent_id: String,
+    pub r#type: String,
+    // "People": [
+    //   {
+    //     "Name": "string",
+    //     "Id": "38a5a5bb-dc30-49a2-b175-1de0d1488c43",
+    //     "Role": "string",
+    //     "Type": "string",
+    //     "PrimaryImageTag": "string",
+    //     "ImageBlurHashes": {
+    //       "Primary": {
+    //         "property1": "string",
+    //         "property2": "string"
+    //       },
+    //       "Art": {
+    //         "property1": "string",
+    //         "property2": "string"
+    //       },
+    //       "Backdrop": {
+    //         "property1": "string",
+    //         "property2": "string"
+    //       },
+    //       "Banner": {
+    //         "property1": "string",
+    //         "property2": "string"
+    //       },
+    //       "Logo": {
+    //         "property1": "string",
+    //         "property2": "string"
+    //       },
+    //       "Thumb": {
+    //         "property1": "string",
+    //         "property2": "string"
+    //       },
+    //       "Disc": {
+    //         "property1": "string",
+    //         "property2": "string"
+    //       },
+    //       "Box": {
+    //         "property1": "string",
+    //         "property2": "string"
+    //       },
+    //       "Screenshot": {
+    //         "property1": "string",
+    //         "property2": "string"
+    //       },
+    //       "Menu": {
+    //         "property1": "string",
+    //         "property2": "string"
+    //       },
+    //       "Chapter": {
+    //         "property1": "string",
+    //         "property2": "string"
+    //       },
+    //       "BoxRear": {
+    //         "property1": "string",
+    //         "property2": "string"
+    //       },
+    //       "Profile": {
+    //         "property1": "string",
+    //         "property2": "string"
+    //       }
+    //     }
+    //   }
+    // ],
+    // "Studios": [
+    //   {
+    //     "Name": "string",
+    //     "Id": "38a5a5bb-dc30-49a2-b175-1de0d1488c43"
+    //   }
+    // ],
+    // "GenreItems": [
+    //   {
+    //     "Name": "string",
+    //     "Id": "38a5a5bb-dc30-49a2-b175-1de0d1488c43"
+    //   }
+    // ],
+    // parent_logo_item_id: String,
+    // parent_backdrop_item_id: String,
+    // parent_backdrop_image_tags: Vec<String>,
+    // local_trailer_count: i64,
+    // "UserData": {
+    //   "Rating": 0,
+    //   "PlayedPercentage": 0,
+    //   "UnplayedItemCount": 0,
+    //   "PlaybackPositionTicks": 0,
+    //   "PlayCount": 0,
+    //   "IsFavorite": true,
+    //   "Likes": true,
+    //   "LastPlayedDate": "2019-08-24T14:15:22Z",
+    //   "Played": true,
+    //   "Key": "string",
+    //   "ItemId": "string"
+    // },
+    // recursive_item_count: i64,
+    // child_count: i64,
+    // series_name: String,
+    // series_id: String,
+    // season_id: String,
+    // special_feature_count: i64,
+    // display_preferences_id: String,
+    // status: String,
+    // airtime: String,
+    // air_days: Vec<String>,
+    // tags: Vec<String>,
+    // primary_image_aspect_ratio: String,
+    // artists: Vec<String>,
+    // artist_items: Vec<String>,
+    // album: String,
+    // collection_type: String,
+    // display_order: String,
+    // album_id: String,
+    // album_primary_image_tag: String,
+    // series_primary_image_tag: String,
+    // album_artist: String,
+    // "AlbumArtists": [
+    //   {
+    //     "Name": "string",
+    //     "Id": "38a5a5bb-dc30-49a2-b175-1de0d1488c43"
+    //   }
+    // ],
+    // season_name: String,
+    // "MediaStreams": [
+    //   {
+    //     "Codec": "string",
+    //     "CodecTag": "string",
+    //     "Language": "string",
+    //     "ColorRange": "string",
+    //     "ColorSpace": "string",
+    //     "ColorTransfer": "string",
+    //     "ColorPrimaries": "string",
+    //     "DvVersionMajor": 0,
+    //     "DvVersionMinor": 0,
+    //     "DvProfile": 0,
+    //     "DvLevel": 0,
+    //     "RpuPresentFlag": 0,
+    //     "ElPresentFlag": 0,
+    //     "BlPresentFlag": 0,
+    //     "DvBlSignalCompatibilityId": 0,
+    //     "Comment": "string",
+    //     "TimeBase": "string",
+    //     "CodecTimeBase": "string",
+    //     "Title": "string",
+    //     "VideoRange": "string",
+    //     "VideoRangeType": "string",
+    //     "VideoDoViTitle": "string",
+    //     "LocalizedUndefined": "string",
+    //     "LocalizedDefault": "string",
+    //     "LocalizedForced": "string",
+    //     "LocalizedExternal": "string",
+    //     "DisplayTitle": "string",
+    //     "NalLengthSize": "string",
+    //     "IsInterlaced": true,
+    //     "IsAVC": true,
+    //     "ChannelLayout": "string",
+    //     "BitRate": 0,
+    //     "BitDepth": 0,
+    //     "RefFrames": 0,
+    //     "PacketLength": 0,
+    //     "Channels": 0,
+    //     "SampleRate": 0,
+    //     "IsDefault": true,
+    //     "IsForced": true,
+    //     "Height": 0,
+    //     "Width": 0,
+    //     "AverageFrameRate": 0,
+    //     "RealFrameRate": 0,
+    //     "Profile": "string",
+    //     "Type": "Audio",
+    //     "AspectRatio": "string",
+    //     "Index": 0,
+    //     "Score": 0,
+    //     "IsExternal": true,
+    //     "DeliveryMethod": "Encode",
+    //     "DeliveryUrl": "string",
+    //     "IsExternalUrl": true,
+    //     "IsTextSubtitleStream": true,
+    //     "SupportsExternalStream": true,
+    //     "Path": "string",
+    //     "PixelFormat": "string",
+    //     "Level": 0,
+    //     "IsAnamorphic": true
+    //   }
+    // ],
+    // video_type: String,
+    // part_count: i64,
+    // media_source_count: i64,
+    // "ImageTags": {
+    //   "property1": "string",
+    //   "property2": "string"
+    // },
+    // backdrop_image_tags: Vec<String>,
+    // screenshot_image_tags: Vec<String>,
+    // parent_logo_image_tag: String,
+    // parent_art_item_id: String,
+    // parent_art_image_tag: String,
+    // series_thumb_image_tag: String,
+    // "ImageBlurHashes": {
+    //   "Primary": {
+    //     "property1": "string",
+    //     "property2": "string"
+    //   },
+    //   "Art": {
+    //     "property1": "string",
+    //     "property2": "string"
+    //   },
+    //   "Backdrop": {
+    //     "property1": "string",
+    //     "property2": "string"
+    //   },
+    //   "Banner": {
+    //     "property1": "string",
+    //     "property2": "string"
+    //   },
+    //   "Logo": {
+    //     "property1": "string",
+    //     "property2": "string"
+    //   },
+    //   "Thumb": {
+    //     "property1": "string",
+    //     "property2": "string"
+    //   },
+    //   "Disc": {
+    //     "property1": "string",
+    //     "property2": "string"
+    //   },
+    //   "Box": {
+    //     "property1": "string",
+    //     "property2": "string"
+    //   },
+    //   "Screenshot": {
+    //     "property1": "string",
+    //     "property2": "string"
+    //   },
+    //   "Menu": {
+    //     "property1": "string",
+    //     "property2": "string"
+    //   },
+    //   "Chapter": {
+    //     "property1": "string",
+    //     "property2": "string"
+    //   },
+    //   "BoxRear": {
+    //     "property1": "string",
+    //     "property2": "string"
+    //   },
+    //   "Profile": {
+    //     "property1": "string",
+    //     "property2": "string"
+    //   }
+    // },
+    // series_studio: String,
+    // parent_thumb_item_id: String,
+    // parent_thumb_image_tag: String,
+    // parent_primary_image_item_id: String,
+    // parent_primary_image_tag: String,
+    // "Chapters": [
+    //   {
+    //     "StartPositionTicks": 0,
+    //     "Name": "string",
+    //     "ImagePath": "string",
+    //     "ImageDateModified": "2019-08-24T14:15:22Z",
+    //     "ImageTag": "string"
+    //   }
+    // ],
+    // location_type: String,
+    // iso_type: String,
+    // media_type: String,
+    // end_date: String,
+    // locked_fields: Vec<String>,
+    // trailer_count: i64,
+    // movie_count: i64,
+    // series_count: i64,
+    // program_count: i64,
+    // episode_count: i64,
+    // song_count: i64,
+    // album_count: i64,
+    // artist_count: i64,
+    // music_video_count: i64,
+    // lock_data: bool,
+    // width: i64,
+    // height: i64,
+    // camera_make: String,
+    // camera_model: String,
+    // software: String,
+    // exposure_time: i64,
+    // focal_length: i64,
+    // image_orientation: String,
+    // aperture: i64,
+    // shutter_speed: i64,
+    // latitude: i64,
+    // longitude: i64,
+    // altitude: i64,
+    // iso_speed_rating: i64,
+    // series_timer_id: String,
+    // program_id: String,
+    // channel_primary_image_tag: String,
+    // start_date: String,
+    // completion_percentage: i64,
+    // is_repeat: bool,
+    // episode_title: String,
+    // channel_type: String,
+    // audio: String,
+    // is_movie: bool,
+    // is_sports: bool,
+    // is_series: bool,
+    // is_live: bool,
+    // is_news: bool,
+    // is_kids: bool,
+    // is_premiere: bool,
+    // timer_id: String,
+    // "CurrentProgram": {}
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -623,13 +629,6 @@ pub struct UserAuth {
     pub server_id: String,
 }
 
-impl UserAuth {
-    pub fn to_emby_header(&self) -> String {
-        let device_name = whoami::devicename().replace(' ', "_");
-        format!("Emby UserId=\"{}\", Client=\"jellyfin-rs\", Device=\"{}\", DeviceId=\"{:x}\", Version=1, Token=\"{}\"", self.user.id, device_name, md5::compute(device_name.clone()), self.access_token)
-    }
-}
-
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct GetUsersQuery {
     is_hidden: bool,
@@ -642,355 +641,238 @@ struct AuthUserStdQuery {
     password: String,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "PascalCase")]
-struct AuthUserNameQuery {
-    username: String,
-    pw: String,
-}
-
-//TODO: use phantom data to make auth better
-//TODO: add docs
-impl JellyfinClient {
+impl<Auth: Authed, Sha: Sha256> JellyfinClient<Auth, Sha> {
     /// Gets a list of all users that the `UserAuth` has access to, given some filters.
     pub async fn get_users(&self, is_hidden: bool, is_disabled: bool) -> Result<Vec<User>> {
         let req = self
-            .client
-            .get(format!(
-                "{}Users",
-                self.url,
-            ))
+            .get(format!("{}Users", self.url,))
             .query(&GetUsersQuery {
                 is_hidden,
                 is_disabled,
             })
-            .header(
-                "X-Emby-Authorization",
-                self.auth
-                    .as_ref()
-                    .ok_or(JellyfinError::AuthNotFound)?
-                    .to_emby_header(),
-            )
             .send()
             .await?;
-
         Ok(req.json().await?)
     }
-
-    pub async fn get_user_by_id<T: Into<String>>(&self, id: T) -> Result<User> {
+    pub async fn get_user_by_id(&self, id: impl AsRef<str>) -> Result<User> {
         let req = self
-            .client
-            .get(format!(
-                "{}Users/{}",
-                self.url,
-                id.into().as_str()
-            ))
-                .header(
-                "X-Emby-Authorization",
-                self.auth
-                    .as_ref()
-                    .ok_or(JellyfinError::AuthNotFound)?
-                    .to_emby_header(),
-            )
+            .get(format!("{}Users/{}", self.url, id.as_ref()))
             .send()
             .await?;
-
         Ok(req.json().await?)
     }
-
-    pub async fn delete_user<T: Into<String>>(&self, id: T) -> Result<()> {
+    pub async fn delete_user(&self, id: impl AsRef<str>) -> Result<()> {
         let _req = self
-            .client
-            .delete(format!(
-                "{}Users/{}",
-                self.url,
-                id.into().as_str()
-            ))
-                .header(
-                "X-Emby-Authorization",
-                self.auth
-                    .as_ref()
-                    .ok_or(JellyfinError::AuthNotFound)?
-                    .to_emby_header(),
-            )
+            .delete(format!("{}Users/{}", self.url, id.as_ref()))
             .send()
             .await?;
-
         Ok(())
     }
-
-    pub async fn update_user<T: Into<String>>(&self, id: T, new_info: User) -> Result<()> {
+    pub async fn update_user(&self, id: impl AsRef<str>, new_info: &User) -> Result<()> {
         let _req = self
-            .client
-            .post(format!(
-                "{}Users/{}",
-                self.url,
-                id.into().as_str()
-            ))
-            .json(&new_info)
-            .header(
-                "X-Emby-Authorization",
-                self.auth
-                    .as_ref()
-                    .ok_or(JellyfinError::AuthNotFound)?
-                    .to_emby_header(),
-            )
-            .send()
-            .await?;
-
-        Ok(())
-    }
-
-    pub async fn auth_user_std<T: Into<String> + Clone>(
-        &mut self,
-        id: T,
-        password: T,
-    ) -> Result<()> {
-        let mut hasher = sha1::Sha1::new();
-        hasher.update(password.clone().into());
-        let device_name = whoami::devicename().replace(' ', "_");
-
-        let req = self
-            .client.post(format!(
-                "{}Users/{}/Authenticate",
-                self.url,
-                id.into().as_str()
-            ))
-            .query(&AuthUserStdQuery {
-                pw: password.into(),
-                password: format!("{:x}", hasher.finalize())
-            }).header("X-Emby-Authorization", format!("Emby UserId=\"\", Client=\"jellyfin-rs\", Device=\"{}\", DeviceId=\"{:x}\", Version=1, Token=\"\"", device_name, md5::compute(device_name.clone())))
-            .send()
-            .await?;
-
-        self.auth = Some(req.json().await?);
-        Ok(())
-    }
-
-    pub async fn update_user_conf<T: Into<String>>(
-        &self,
-        id: T,
-        new_conf: UserConfiguration,
-    ) -> Result<()> {
-        let _req = self
-            .client
-            .post(
-                format!(
-                    "{}Users/{}/Configuration",
-                    self.url,
-                    id.into().as_str()
-                )
-            )
-            .json(&new_conf)
-            .header(
-                "X-Emby-Authorization",
-                self.auth
-                    .as_ref()
-                    .ok_or(JellyfinError::AuthNotFound)?
-                    .to_emby_header(),
-            )
-            .send()
-            .await?;
-
-        Ok(())
-    }
-
-    pub async fn update_user_password<T: Into<String>>(
-        &self,
-        id: T,
-        new_password: T,
-    ) -> Result<()> {
-        let _req = self
-            .client
-            .post(
-                format!(
-                    "{}Users/{}/Password",
-                    self.url,
-                    id.into().as_str()
-                )
-            )
-            .json(&json!({ "NewPw": new_password.into() }))
-            .header(
-                "X-Emby-Authorization",
-                self.auth
-                    .as_ref()
-                    .ok_or(JellyfinError::AuthNotFound)?
-                    .to_emby_header(),
-            )
-            .send()
-            .await?;
-
-        Ok(())
-    }
-
-    pub async fn update_user_policy<T: Into<String>>(
-        &self,
-        id: T,
-        new_policy: UserPolicy,
-    ) -> Result<()> {
-        let _req = self
-            .client
-            .post(
-                format!(
-                    "{}Users/{}/Policy",
-                    self.url,
-                    id.into().as_str()
-                )
-            )
-            .json(&new_policy)
-            .header(
-                "X-Emby-Authorization",
-                self.auth
-                    .as_ref()
-                    .ok_or(JellyfinError::AuthNotFound)?
-                    .to_emby_header(),
-            )
-            .send()
-            .await?;
-
-        Ok(())
-    }
-
-    pub async fn auth_user_name<T: Into<String>>(
-        &mut self,
-        username: T,
-        password: T,
-    ) -> Result<()> {
-        let device_name = whoami::devicename().replace(' ', "_");
-
-        let req = self.client.post(format!(
-            "{}Users/AuthenticateByName",
-            self.url
-        ))
-            .json(&AuthUserNameQuery {
-                username: username.into(),
-                pw: password.into()
+            .post(format!("{}Users", self.url))
+            .query(&UserIdQuery {
+                user_id: id.as_ref(),
             })
-            .header("X-Emby-Authorization", format!("Emby UserId=\"\", Client=\"jellyfin-rs\", Device=\"{}\", DeviceId=\"{:x}\", Version=1, Token=\"\"", device_name, md5::compute(device_name.clone())))
+            .json(new_info)
             .send()
             .await?;
-
-        self.auth = Some(req.json().await?);
         Ok(())
     }
-
-    pub async fn user_forgot_password<T: Into<String>>(&self, username: T) -> Result<()> {
-        let device_name = whoami::devicename().replace(' ', "_");
-
-        let _req = self.client.post(format!(
-            "{}Users/ForgotPassword",
-            self.url
-        )).json(&json!({
-                "EnteredUsername": username.into()
-            }))
-            .header("X-Emby-Authorization", format!("Emby UserId=\"\", Client=\"jellyfin-rs\", Device=\"{}\", DeviceId=\"{:x}\", Version=1, Token=\"\"", device_name, md5::compute(device_name.clone())))
+    pub async fn update_user_conf(
+        &self,
+        id: impl AsRef<str>,
+        new_conf: &UserConfiguration,
+    ) -> Result<()> {
+        let _req = self
+            .post(format!("{}Users/Configuration", self.url))
+            .query(&UserIdQuery {
+                user_id: id.as_ref(),
+            })
+            .json(new_conf)
             .send()
             .await?;
-
         Ok(())
     }
-
-    pub async fn user_redeem_forgot_password_pin<T: Into<String>>(&self, pin: T) -> Result<()> {
-        let device_name = whoami::devicename().replace(' ', "_");
-
-        let _req = self.client.post(format!(
-            "{}Users/ForgotPassword/Pin",
-            self.url
-        )).json(&json!({
-                "Pin": pin.into()
-            }))
-            .header("X-Emby-Authorization", format!("Emby UserId=\"\", Client=\"jellyfin-rs\", Device=\"{}\", DeviceId=\"{:x}\", Version=1, Token=\"\"", device_name, md5::compute(device_name.clone())))
+    pub async fn update_user_password(
+        &self,
+        id: impl AsRef<str>,
+        new_password: impl AsRef<str>,
+    ) -> Result<()> {
+        let _req = self
+            .post(format!("{}Users/Password", self.url))
+            .query(&UserIdQuery {
+                user_id: id.as_ref(),
+            })
+            .json(&NewPwReq {
+                new_pw: new_password.as_ref(),
+            })
             .send()
             .await?;
-
         Ok(())
     }
-
+    pub async fn update_user_policy(
+        &self,
+        id: impl AsRef<str>,
+        new_policy: &UserPolicy,
+    ) -> Result<()> {
+        let _req = self
+            .post(format!("{}Users/{}/Policy", self.url, id.as_ref()))
+            .json(&new_policy)
+            .send()
+            .await?;
+        Ok(())
+    }
     pub async fn get_user_by_auth(&self) -> Result<User> {
+        let req = self.get(format!("{}Users/Me", self.url)).send().await?;
+        Ok(req.json().await?)
+    }
+    pub async fn create_user(
+        &self,
+        username: impl AsRef<str>,
+        password: impl AsRef<str>,
+    ) -> Result<User> {
         let req = self
-            .client
-            .get(format!(
-                "{}Users/Me",
-                self.url
-            ))
-            .header(
-                "X-Emby-Authorization",
-                self.auth
-                    .as_ref()
-                    .ok_or(JellyfinError::AuthNotFound)?
-                    .to_emby_header(),
-            )
+            .post(format!("{}Users/New", self.url))
+            .json(&CreateUserReq {
+                name: username.as_ref(),
+                password: password.as_ref(),
+            })
             .send()
             .await?;
-
-        Ok(req.json().await?)
-    }
-
-    pub async fn create_user<T: Into<String>>(&self, username: T, password: T) -> Result<User> {
-        let req = self
-            .client
-            .post(format!(
-                "{}Users/New",
-                self.url
-            ))
-            .json(&json!({
-                "Name": username.into(),
-                "Password": password.into()
-            }))
-            .header(
-                "X-Emby-Authorization",
-                self.auth
-                    .as_ref()
-                    .ok_or(JellyfinError::AuthNotFound)?
-                    .to_emby_header(),
-            )
-            .send()
-            .await?;
-
-        Ok(req.json().await?)
-    }
-
-    pub async fn get_public_user_list(&self) -> Result<Vec<User>> {
-        let device_name = whoami::devicename().replace(' ', "_");
-
-        let req = self.client.get(format!(
-            "{}Users/Public",
-            self.url
-        ))
-            .header("X-Emby-Authorization", format!("Emby UserId=\"\", Client=\"jellyfin-rs\", Device=\"{}\", DeviceId=\"{:x}\", Version=1, Token=\"\"", device_name, md5::compute(device_name.clone())))
-            .send()
-            .await?;
-
-        Ok(req.json().await?)
-    }
-
-    pub async fn get_user_item(&self, user_id: &str, item_id: &str) -> Result<UserItem> {
-        let req = self.client.get(format!(
-            "{}Users/{}/Items/{}",
-            self.url,
-            user_id,
-            item_id,
-        ))
-            .header(
-                "X-Emby-Authorization",
-                self.auth
-                    .as_ref()
-                    .ok_or(JellyfinError::AuthNotFound)?
-                    .to_emby_header(),
-            )
-            .send()
-            .await?;
-
-        // panic!("{:?}", req.text().await?);
-
         Ok(req.json().await?)
     }
 }
 
-#[cfg(test)]
-mod test {
-    #[tokio::test]
-    async fn test() {
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "PascalCase")]
+struct NewPwReq<'pw> {
+    new_pw: &'pw str,
+}
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "PascalCase")]
+struct ForgotPwReq<'s> {
+    entered_username: &'s str,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ForgotPasswordAction {
+    ContactAdmin,
+    PinCode,
+    InNetworkRequired,
+}
+
+impl Serialize for ForgotPasswordAction {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        Serialize::serialize(
+            match self {
+                ForgotPasswordAction::ContactAdmin => "ContactAdmin",
+                ForgotPasswordAction::PinCode => "PinCode",
+                ForgotPasswordAction::InNetworkRequired => "InNetworkRequired",
+            },
+            serializer,
+        )
     }
+}
+
+struct ForgotPasswordActionVisitor;
+impl Visitor<'_> for ForgotPasswordActionVisitor {
+    fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        match v {
+            "ContactAdmin" => Ok(ForgotPasswordAction::ContactAdmin),
+            "PinCode" => Ok(ForgotPasswordAction::PinCode),
+            "InNetworkRequired" => Ok(ForgotPasswordAction::InNetworkRequired),
+            v => Err(E::unknown_variant(
+                v,
+                &["ContactAdmin", "PinCode", "InNetworkRequired"],
+            )),
+        }
+    }
+
+    type Value = ForgotPasswordAction;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("One of \"ContactAdmin\", \"PinCode\" or \"InNetworkRequired\"")
+    }
+}
+
+impl<'de> Deserialize<'de> for ForgotPasswordAction {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(ForgotPasswordActionVisitor)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct ForgotPasswordResponse {
+    action: ForgotPasswordAction,
+    pin_file: Option<String>,
+    pin_expiration_date: Option<String>,
+}
+
+impl<Auth: AuthStatus, Sha: Sha256> JellyfinClient<Auth, Sha> {
+    pub async fn user_forgot_password(
+        &self,
+        username: impl AsRef<str>,
+    ) -> Result<ForgotPasswordResponse> {
+        let req = self
+            .client
+            .post(format!("{}Users/ForgotPassword", self.url))
+            .json(&ForgotPwReq {
+                entered_username: username.as_ref(),
+            })
+            .send()
+            .await?;
+        Ok(req.json().await?)
+    }
+    pub async fn user_redeem_forgot_password_pin(
+        &self,
+        pin: impl AsRef<str>,
+    ) -> Result<RedeemForgotPasswordResponse> {
+        let req = self
+            .client
+            .post(format!("{}Users/ForgotPassword/Pin", self.url))
+            .json(&RedeemForgotPasswordReq { pin: pin.as_ref() })
+            .send()
+            .await?;
+        Ok(req.json().await?)
+    }
+    pub async fn get_public_user_list(&self) -> Result<Vec<User>> {
+        let req = self
+            .client
+            .get(format!("{}Users/Public", self.url))
+            .send()
+            .await?;
+        Ok(req.json().await?)
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "PascalCase")]
+struct RedeemForgotPasswordReq<'s> {
+    pin: &'s str,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct RedeemForgotPasswordResponse {
+    success: bool,
+    users_reset: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "PascalCase")]
+struct CreateUserReq<'s> {
+    name: &'s str,
+    password: &'s str,
 }
