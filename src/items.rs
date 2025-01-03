@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use serde::Serialize;
+use crate::{sha::Sha256, Auth, JellyfinClient, Result};
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -503,4 +504,37 @@ pub struct FullNowPlayingItem {
 pub struct NowPlayingQueue {
     pub id: String,
     pub playlist_item_id: Option<String>,
+}
+
+#[derive(Debug, Default, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetResumeQuery<'a> {
+    pub user_id: Option<&'a str>,
+    pub start_index: Option<u32>,
+    pub limit: Option<u32>,
+    pub search_term: Option<&'a str>,
+    pub parent_id: Option<&'a str>,
+    pub fields: Option<&'a [&'a str]>,
+    pub media_types: Option<&'a [&'a str]>,
+    pub enable_user_data: Option<bool>,
+    pub image_type_limit: Option<u32>,
+    pub enable_image_types: Option<&'a [&'a str]>,
+    pub exclude_item_types: Option<&'a [&'a str]>,
+    pub include_item_types: Option<&'a [&'a str]>,
+    pub enable_total_record_count: Option<bool>,
+    pub enable_images: Option<bool>,
+    pub exclude_active_sessions: Option<bool>,
+}
+
+impl<Sha: Sha256> JellyfinClient<Auth, Sha> {
+    pub async fn get_user_items_resume(
+        &self,
+        query: &GetResumeQuery<'_>
+    )-> Result<serde_json::Value>{
+        let req = self.get(format!("{}UserItems/Resume", self.url))
+            .query(query)
+            .send()
+            .await?;
+        Ok(req.json().await?)
+    }
 }
