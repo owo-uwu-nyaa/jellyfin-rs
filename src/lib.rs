@@ -3,13 +3,22 @@ use std::{borrow::Cow, marker::PhantomData};
 pub use err::Result;
 use reqwest::{
     header::{HeaderValue, AUTHORIZATION},
-    Client, IntoUrl, RequestBuilder,
+    Client, IntoUrl,
 };
+use reqwest_middleware::ClientBuilder;
+#[cfg(feature = "tracing")]
+use reqwest_middleware::ClientWithMiddleware;
+use reqwest_tracing::TracingMiddleware;
 use sealed::AuthStatus;
 use session::SessionInfo;
 use sha::Sha256;
 use url::Url;
 use user::User;
+
+#[cfg(not(feature = "tracing"))]
+pub(crate) type RequestBuilder = reqwest::RequestBuilder;
+#[cfg(feature = "tracing")]
+pub(crate) type RequestBuilder = reqwest_middleware::RequestBuilder;
 
 pub mod activity;
 pub mod auth;
@@ -24,7 +33,10 @@ pub mod user_views;
 #[derive(Debug, Clone)]
 pub struct JellyfinClient<AuthS: AuthStatus = Auth, Sha: Sha256 = sha::Default> {
     url: Url,
+    #[cfg(not(feature = "tracing"))]
     client: Client,
+    #[cfg(feature = "tracing")]
+    client: ClientWithMiddleware,
     client_info: ClientInfo,
     device_name: Cow<'static, str>,
     auth: AuthS,
@@ -91,9 +103,14 @@ impl<AuthS: AuthStatus, Sha: Sha256> JellyfinClient<AuthS, Sha> {
         client_info: ClientInfo,
         device_name: impl Into<Cow<'static, str>>,
     ) -> err::Result<JellyfinClient<NoAuth, Sha>> {
+        let client = Client::new();
+        #[cfg(feature = "tracing")]
+        let client = ClientBuilder::new(client)
+            .with(TracingMiddleware::default())
+            .build();
         Ok(JellyfinClient {
             url: Url::parse(url.as_ref())?,
-            client: Client::new(),
+            client,
             auth: NoAuth,
             client_info,
             device_name: device_name.into(),
@@ -114,7 +131,8 @@ impl<AuthS: AuthStatus, Sha: Sha256> JellyfinClient<AuthS, Sha> {
     ) -> err::Result<JellyfinClient<Auth, Sha>> {
         Self::new(url, client_info, device_name)?
             .auth_user_name(username, password)
-            .await.map_err(|(_,e)|e)
+            .await
+            .map_err(|(_, e)| e)
     }
 
     pub fn new_auth_key(
@@ -132,9 +150,6 @@ impl<AuthS: AuthStatus, Sha: Sha256> JellyfinClient<AuthS, Sha> {
     pub fn get_base_url(&self) -> &Url {
         &self.url
     }
-    pub fn get_http_client(&self) -> &Client {
-        &self.client
-    }
     pub fn get_client_info(&self) -> &ClientInfo {
         &self.client_info
     }
@@ -143,8 +158,8 @@ impl<AuthS: AuthStatus, Sha: Sha256> JellyfinClient<AuthS, Sha> {
     }
 }
 
-impl<Sha: Sha256> JellyfinClient<NoAuth, Sha>{
-    pub fn get_base_url_mut(&mut self)-> &mut Url{
+impl<Sha: Sha256> JellyfinClient<NoAuth, Sha> {
+    pub fn get_base_url_mut(&mut self) -> &mut Url {
         &mut self.url
     }
 }
