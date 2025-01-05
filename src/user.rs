@@ -1,11 +1,10 @@
 use super::err::Result;
-use serde::de::Visitor;
 use serde::Deserialize;
 use serde::Serialize;
 
 use super::session::SessionInfo;
-use crate::sealed::AuthStatus;
 use crate::sha::Sha256;
+use crate::AuthStatus;
 use crate::Authed;
 use crate::JellyfinClient;
 
@@ -716,15 +715,17 @@ impl<Auth: Authed, Sha: Sha256> JellyfinClient<Auth, Sha> {
         id: impl AsRef<str>,
         new_policy: &UserPolicy,
     ) -> Result<()> {
-        let _req = self
+        let req = self
             .post(format!("{}Users/{}/Policy", self.url, id.as_ref()))
             .json(&new_policy)
             .send()
             .await?;
+        let _req = req.error_for_status()?;
         Ok(())
     }
     pub async fn get_user_by_auth(&self) -> Result<User> {
         let req = self.get(format!("{}Users/Me", self.url)).send().await?;
+        let req = req.error_for_status()?;
         Ok(req.json().await?)
     }
     pub async fn create_user(
@@ -740,6 +741,7 @@ impl<Auth: Authed, Sha: Sha256> JellyfinClient<Auth, Sha> {
             })
             .send()
             .await?;
+        let req = req.error_for_status()?;
         Ok(req.json().await?)
     }
 }
@@ -756,60 +758,11 @@ struct ForgotPwReq<'s> {
     entered_username: &'s str,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ForgotPasswordAction {
     ContactAdmin,
     PinCode,
     InNetworkRequired,
-}
-
-impl Serialize for ForgotPasswordAction {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        Serialize::serialize(
-            match self {
-                ForgotPasswordAction::ContactAdmin => "ContactAdmin",
-                ForgotPasswordAction::PinCode => "PinCode",
-                ForgotPasswordAction::InNetworkRequired => "InNetworkRequired",
-            },
-            serializer,
-        )
-    }
-}
-
-struct ForgotPasswordActionVisitor;
-impl Visitor<'_> for ForgotPasswordActionVisitor {
-    fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        match v {
-            "ContactAdmin" => Ok(ForgotPasswordAction::ContactAdmin),
-            "PinCode" => Ok(ForgotPasswordAction::PinCode),
-            "InNetworkRequired" => Ok(ForgotPasswordAction::InNetworkRequired),
-            v => Err(E::unknown_variant(
-                v,
-                &["ContactAdmin", "PinCode", "InNetworkRequired"],
-            )),
-        }
-    }
-
-    type Value = ForgotPasswordAction;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("One of \"ContactAdmin\", \"PinCode\" or \"InNetworkRequired\"")
-    }
-}
-
-impl<'de> Deserialize<'de> for ForgotPasswordAction {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_str(ForgotPasswordActionVisitor)
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -833,6 +786,7 @@ impl<Auth: AuthStatus, Sha: Sha256> JellyfinClient<Auth, Sha> {
             })
             .send()
             .await?;
+        let req = req.error_for_status()?;
         Ok(req.json().await?)
     }
     pub async fn user_redeem_forgot_password_pin(
@@ -845,6 +799,7 @@ impl<Auth: AuthStatus, Sha: Sha256> JellyfinClient<Auth, Sha> {
             .json(&RedeemForgotPasswordReq { pin: pin.as_ref() })
             .send()
             .await?;
+        let req = req.error_for_status()?;
         Ok(req.json().await?)
     }
     pub async fn get_public_user_list(&self) -> Result<Vec<User>> {
@@ -853,6 +808,7 @@ impl<Auth: AuthStatus, Sha: Sha256> JellyfinClient<Auth, Sha> {
             .get(format!("{}Users/Public", self.url))
             .send()
             .await?;
+        let req = req.error_for_status()?;
         Ok(req.json().await?)
     }
 }

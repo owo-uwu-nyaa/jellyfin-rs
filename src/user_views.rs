@@ -1,34 +1,53 @@
-use serde::Serialize;
+use std::collections::HashMap;
 
-use crate::{sha::Sha256, Auth, JellyfinClient, Result};
+use serde::{Deserialize, Serialize};
+use tracing::instrument;
 
-#[derive(Debug, Serialize)]
+use crate::{items::ImageType, sha::Sha256, Auth, JellyfinClient, Result};
+
+#[derive(Debug, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
-struct GetUserViewsQuery<'s> {
-    user_id: Option<&'s str>,
-    include_external_content: Option<bool>,
-    preset_views: Option<&'s [&'s str]>,
-    include_hidden: Option<bool>,
+pub struct GetUserViewsQuery<'s> {
+    pub user_id: Option<&'s str>,
+    pub include_external_content: Option<bool>,
+    pub preset_views: Option<&'s str>,
+    pub include_hidden: Option<bool>,
 }
 
 impl<Sha: Sha256> JellyfinClient<Auth, Sha> {
-    pub async fn get_user_views(
-        &self,
-        user_id: Option<&str>,
-        include_external_content: Option<bool>,
-        preset_views: Option<&[&str]>,
-        include_hidden: Option<bool>,
-    ) -> Result<serde_json::Value> {
+    #[instrument(skip(self))]
+    pub async fn get_user_views(&self, query: &GetUserViewsQuery<'_>) -> Result<UserViews> {
         let req = self
             .get(format!("{}UserViews", self.url))
-            .query(&GetUserViewsQuery {
-                user_id,
-                include_external_content,
-                preset_views,
-                include_hidden,
-            })
+            .query(&query)
             .send()
             .await?;
+        let req = req.error_for_status()?;
         Ok(req.json().await?)
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "PascalCase")]
+pub struct UserView {
+    pub name: String,
+    pub id: String,
+    #[serde(rename = "Type")]
+    pub view_type: UserViewType,
+    pub image_tags: Option<HashMap<ImageType, String>>,
+    pub sort_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "PascalCase")]
+pub struct UserViews {
+    pub items: Vec<UserView>,
+    pub start_index: u32,
+    pub total_record_count: u32,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum UserViewType {
+    CollectionFolder,
+    UserView,
 }

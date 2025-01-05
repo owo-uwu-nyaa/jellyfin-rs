@@ -2,9 +2,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::items::FullNowPlayingItem;
 use crate::items::MediaItem;
-use crate::items::NowPlayingQueue;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -23,7 +21,6 @@ pub struct SessionInfo {
     pub device_name: String,
     pub device_type: Option<String>,
     pub now_playing_item: Option<MediaItem>,
-    pub full_now_playing_item: Option<FullNowPlayingItem>,
     pub now_viewing_item: Option<MediaItem>,
     pub device_id: String,
     pub application_version: String,
@@ -31,7 +28,6 @@ pub struct SessionInfo {
     pub is_active: bool,
     pub supports_media_control: bool,
     pub supports_remote_control: bool,
-    pub now_playing_queue: Vec<NowPlayingQueue>,
     pub now_playing_queue_full_items: Vec<MediaItem>,
     pub has_custom_device_name: bool,
     pub playlist_item_id: Option<String>,

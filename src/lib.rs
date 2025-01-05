@@ -3,26 +3,18 @@ use std::{borrow::Cow, marker::PhantomData};
 pub use err::Result;
 use reqwest::{
     header::{HeaderValue, AUTHORIZATION},
-    Client, IntoUrl,
+    Client, IntoUrl, RequestBuilder,
 };
-use reqwest_middleware::ClientBuilder;
-#[cfg(feature = "tracing")]
-use reqwest_middleware::ClientWithMiddleware;
-use reqwest_tracing::TracingMiddleware;
-use sealed::AuthStatus;
+use sealed::AuthSealed;
 use session::SessionInfo;
 use sha::Sha256;
 use url::Url;
 use user::User;
 
-#[cfg(not(feature = "tracing"))]
-pub(crate) type RequestBuilder = reqwest::RequestBuilder;
-#[cfg(feature = "tracing")]
-pub(crate) type RequestBuilder = reqwest_middleware::RequestBuilder;
-
 pub mod activity;
 pub mod auth;
 pub mod err;
+pub mod image;
 pub mod items;
 pub mod session;
 pub mod sha;
@@ -33,10 +25,7 @@ pub mod user_views;
 #[derive(Debug, Clone)]
 pub struct JellyfinClient<AuthS: AuthStatus = Auth, Sha: Sha256 = sha::Default> {
     url: Url,
-    #[cfg(not(feature = "tracing"))]
     client: Client,
-    #[cfg(feature = "tracing")]
-    client: ClientWithMiddleware,
     client_info: ClientInfo,
     device_name: Cow<'static, str>,
     auth: AuthS,
@@ -59,13 +48,16 @@ pub struct KeyAuth {
 
 mod sealed {
     use crate::{Auth, KeyAuth, NoAuth};
-
-    pub trait AuthStatus {}
-    impl AuthStatus for NoAuth {}
-    impl AuthStatus for Auth {}
-    impl AuthStatus for KeyAuth {}
+    pub trait AuthSealed {}
+    impl AuthSealed for NoAuth {}
+    impl AuthSealed for Auth {}
+    impl AuthSealed for KeyAuth {}
 }
 
+pub trait AuthStatus: AuthSealed {}
+impl AuthStatus for NoAuth {}
+impl AuthStatus for Auth {}
+impl AuthStatus for KeyAuth {}
 pub trait Authed: AuthStatus {
     fn token(&self) -> &str;
     fn header(&self) -> &HeaderValue;
@@ -103,14 +95,9 @@ impl<AuthS: AuthStatus, Sha: Sha256> JellyfinClient<AuthS, Sha> {
         client_info: ClientInfo,
         device_name: impl Into<Cow<'static, str>>,
     ) -> err::Result<JellyfinClient<NoAuth, Sha>> {
-        let client = Client::new();
-        #[cfg(feature = "tracing")]
-        let client = ClientBuilder::new(client)
-            .with(TracingMiddleware::default())
-            .build();
         Ok(JellyfinClient {
             url: Url::parse(url.as_ref())?,
-            client,
+            client: Client::new(),
             auth: NoAuth,
             client_info,
             device_name: device_name.into(),
@@ -155,6 +142,9 @@ impl<AuthS: AuthStatus, Sha: Sha256> JellyfinClient<AuthS, Sha> {
     }
     pub fn get_device_name(&self) -> &str {
         &self.device_name
+    }
+    pub fn get_http_client(&self) -> &Client {
+        &self.client
     }
 }
 
